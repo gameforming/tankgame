@@ -224,7 +224,9 @@ function draw() {
     applyCamera();
 
     drawMap();
-    drawPlayer();
+    drawTank();
+    drawBullets();
+    updateBullets();
     drawEnemies();
 }
 
