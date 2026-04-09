@@ -1,0 +1,127 @@
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* BODY */
+body {
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+/* CANVAS (GAME) */
+canvas {
+    display: none;
+    background: #222;
+    image-rendering: pixelated; /* 🔥 belangrijk voor 32x32 tanks */
+}
+
+/* 🎮 MENU */
+#menu {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #111, #222);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* TITLE */
+#menu h1 {
+    font-size: 48px;
+    margin-bottom: 40px;
+    text-shadow: 0 0 10px #000;
+}
+
+/* BUTTONS */
+button {
+    width: 220px;
+    padding: 15px;
+    margin: 10px;
+    font-size: 18px;
+    background: #333;
+    color: white;
+    border: 2px solid #555;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #555;
+    transform: scale(1.05);
+}
+
+/* 📊 HUD */
+#hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: none;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+/* HUD TEXT */
+#hud div {
+    margin: 5px 0;
+    font-size: 16px;
+}
+
+/* XP BAR (voor later) */
+#xpBarContainer {
+    width: 200px;
+    height: 10px;
+    background: #333;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+#xpBar {
+    height: 100%;
+    width: 0%;
+    background: lime;
+}
+
+/* 🎰 CRATE POPUP (voor later) */
+#cratePopup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid #555;
+    display: none;
+    text-align: center;
+}
+
+/* MAP TILE DEBUG (optioneel) */
+.tile {
+    outline: 1px solid rgba(255,255,255,0.05);
+}
+
+/* 🔥 RARITY COLORS (voor tanks later) */
+.common {
+    color: white;
+}
+
+.rare {
+    color: #4da6ff;
+}
+
+.epic {
+    color: #b84dff;
+}
+
+.legendary {
+    color: gold;
+}
