@@ -1,17 +1,28 @@
-// ===== CANVAS SETUP =====
+// ===== CANVAS =====
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// ===== TILE SETTINGS =====
+// ===== PLAYER =====
+let player = {
+    x: 5,
+    y: 5,
+    angle: 0
+};
+
+// ===== INPUT =====
+let keys = {};
+
+window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+// ===== MAP =====
 const TILE_SIZE = 32;
 const MAP_SIZE = 50;
-
 let map = [];
 
-// ===== LOAD IMAGES =====
 const tiles = {
     grass: new Image(),
     stone: new Image(),
@@ -22,19 +33,6 @@ tiles.grass.src = "assets/grass.png";
 tiles.stone.src = "assets/stone.png";
 tiles.planks.src = "assets/planks.png";
 
-// ===== PLAYER =====
-let player = {
-    x: 5,
-    y: 5,
-    speed: 3
-};
-
-// ===== INPUT =====
-let keys = {};
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
-
-// ===== MAP GENERATION =====
 function generateMap() {
     map = [];
 
@@ -42,120 +40,94 @@ function generateMap() {
         let row = [];
 
         for (let x = 0; x < MAP_SIZE; x++) {
-            let rand = Math.random();
-
-            if (rand < 0.7) row.push("grass");
-            else if (rand < 0.9) row.push("planks");
-            else row.push("stone"); // wall
+            let r = Math.random();
+            if (r < 0.7) row.push("grass");
+            else if (r < 0.9) row.push("planks");
+            else row.push("stone");
         }
 
         map.push(row);
     }
-
-    ensurePlayable();
-}
-
-// ===== ANTI-TRAP SYSTEM 🔥 =====
-function ensurePlayable() {
-    // flood fill vanaf player spawn
-    let visited = new Set();
-    let stack = [{ x: player.x, y: player.y }];
-
-    function key(x, y) {
-        return x + "," + y;
-    }
-
-    while (stack.length > 0) {
-        let { x, y } = stack.pop();
-
-        if (
-            x < 0 || y < 0 ||
-            x >= MAP_SIZE || y >= MAP_SIZE
-        ) continue;
-
-        if (map[y][x] === "stone") continue;
-
-        let k = key(x, y);
-        if (visited.has(k)) continue;
-
-        visited.add(k);
-
-        stack.push({ x: x + 1, y: y });
-        stack.push({ x: x - 1, y: y });
-        stack.push({ x: x, y: y + 1 });
-        stack.push({ x: x, y: y - 1 });
-    }
-
-    // alles wat niet bereikbaar is → open maken
-    for (let y = 0; y < MAP_SIZE; y++) {
-        for (let x = 0; x < MAP_SIZE; x++) {
-            if (!visited.has(x + "," + y)) {
-                map[y][x] = "grass";
-            }
-        }
-    }
-}
-
-// ===== MOVEMENT =====
-function updatePlayer() {
-    let newX = player.x;
-    let newY = player.y;
-
-    if (keys["w"]) newY -= player.speed * 0.1;
-    if (keys["s"]) newY += player.speed * 0.1;
-    if (keys["a"]) newX -= player.speed * 0.1;
-    if (keys["d"]) newX += player.speed * 0.1;
-
-    // collision met walls
-    if (!isWall(newX, player.y)) player.x = newX;
-    if (!isWall(player.x, newY)) player.y = newY;
 }
 
 // ===== COLLISION =====
 function isWall(x, y) {
-    let tileX = Math.floor(x);
-    let tileY = Math.floor(y);
+    let tx = Math.floor(x);
+    let ty = Math.floor(y);
 
-    if (
-        tileX < 0 || tileY < 0 ||
-        tileX >= MAP_SIZE || tileY >= MAP_SIZE
-    ) return true;
+    if (tx < 0 || ty < 0 || tx >= MAP_SIZE || ty >= MAP_SIZE) return true;
 
-    return map[tileY][tileX] === "stone";
+    return map[ty][tx] === "stone";
 }
 
-// ===== ENEMIES =====
-let enemies = [];
+// ===== MOVEMENT (REAL TANK STYLE 🔥) =====
+function updatePlayer() {
+    let moveSpeed = currentTank.speed * 0.05;
+    let rotSpeed = 0.05;
 
-function spawnEnemies() {
-    enemies = [];
+    // draaien
+    if (keys["arrowleft"]) player.angle -= rotSpeed;
+    if (keys["arrowright"]) player.angle += rotSpeed;
 
-    for (let i = 0; i < 5; i++) {
-        enemies.push({
-            x: Math.random() * MAP_SIZE,
-            y: Math.random() * MAP_SIZE,
-            speed: 1 + Math.random()
-        });
+    // vooruit / achteruit
+    let dx = Math.cos(player.angle) * moveSpeed;
+    let dy = Math.sin(player.angle) * moveSpeed;
+
+    if (keys["w"]) {
+        if (!isWall(player.x + dx, player.y)) player.x += dx;
+        if (!isWall(player.x, player.y + dy)) player.y += dy;
+    }
+
+    if (keys["s"]) {
+        if (!isWall(player.x - dx, player.y)) player.x -= dx;
+        if (!isWall(player.x, player.y - dy)) player.y -= dy;
     }
 }
 
-function updateEnemies() {
-    enemies.forEach(e => {
-        let dx = player.x - e.x;
-        let dy = player.y - e.y;
+// ===== BULLETS =====
+let bullets = [];
 
-        let dist = Math.sqrt(dx * dx + dy * dy);
+function shoot() {
+    if (!currentTank.canShoot()) return;
 
-        if (dist > 0) {
-            let nx = dx / dist;
-            let ny = dy / dist;
+    let speed = 0.5;
 
-            let newX = e.x + nx * e.speed * 0.05;
-            let newY = e.y + ny * e.speed * 0.05;
+    bullets.push({
+        x: player.x,
+        y: player.y,
+        vx: Math.cos(player.angle) * speed,
+        vy: Math.sin(player.angle) * speed
+    });
 
-            if (!isWall(newX, e.y)) e.x = newX;
-            if (!isWall(e.x, newY)) e.y = newY;
-        }
+    currentTank.onShoot();
+}
+
+// SPATIE = schieten
+window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+        shoot();
+    }
+});
+
+// ===== UPDATE BULLETS =====
+function updateBullets() {
+    bullets.forEach(b => {
+        b.x += b.vx;
+        b.y += b.vy;
+    });
+}
+
+// ===== DRAW BULLETS =====
+function drawBullets() {
+    ctx.fillStyle = "yellow";
+
+    bullets.forEach(b => {
+        ctx.fillRect(
+            b.x * TILE_SIZE,
+            b.y * TILE_SIZE,
+            5,
+            5
+        );
     });
 }
 
@@ -163,12 +135,8 @@ function updateEnemies() {
 function drawMap() {
     for (let y = 0; y < MAP_SIZE; y++) {
         for (let x = 0; x < MAP_SIZE; x++) {
-            let tile = map[y][x];
-
-            let img = tiles[tile];
-
             ctx.drawImage(
-                img,
+                tiles[map[y][x]],
                 x * TILE_SIZE,
                 y * TILE_SIZE,
                 TILE_SIZE,
@@ -178,29 +146,40 @@ function drawMap() {
     }
 }
 
-// ===== DRAW PLAYER =====
-function drawPlayer() {
-    ctx.fillStyle = "lime";
-    ctx.fillRect(
-        player.x * TILE_SIZE,
-        player.y * TILE_SIZE,
+// ===== DRAW TANK =====
+function drawTank() {
+    if (!currentTank.image) return;
+
+    let px = player.x * TILE_SIZE;
+    let py = player.y * TILE_SIZE;
+
+    ctx.save();
+
+    ctx.translate(px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+    ctx.rotate(player.angle);
+
+    ctx.drawImage(
+        currentTank.image,
+        -TILE_SIZE / 2,
+        -TILE_SIZE / 2,
         TILE_SIZE,
         TILE_SIZE
     );
+
+    ctx.restore();
 }
 
-// ===== DRAW ENEMIES =====
-function drawEnemies() {
-    ctx.fillStyle = "red";
+// ===== COOLDOWN BAR =====
+function drawCooldown() {
+    let cd = currentTank.getCooldownPercent();
 
-    enemies.forEach(e => {
-        ctx.fillRect(
-            e.x * TILE_SIZE,
-            e.y * TILE_SIZE,
-            TILE_SIZE,
-            TILE_SIZE
-        );
-    });
+    ctx.setTransform(1,0,0,1,0,0);
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(20, 60, 200, 20);
+
+    ctx.fillStyle = "lime";
+    ctx.fillRect(20, 60, 200 * cd, 20);
 }
 
 // ===== CAMERA =====
@@ -215,19 +194,19 @@ function applyCamera() {
 // ===== GAME LOOP =====
 function update() {
     updatePlayer();
-    updateEnemies();
+    updateBullets();
+    currentTank.update();
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     applyCamera();
-
     drawMap();
     drawTank();
     drawBullets();
-    updateBullets();
-    drawEnemies();
+
+    drawCooldown();
 }
 
 function gameLoop() {
@@ -239,6 +218,5 @@ function gameLoop() {
 // ===== INIT =====
 function initGame() {
     generateMap();
-    spawnEnemies();
     gameLoop();
 }
